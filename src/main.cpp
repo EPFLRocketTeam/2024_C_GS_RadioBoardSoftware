@@ -13,8 +13,7 @@
 
 #include "AsyncUDP.h"
 
-#include "../ERT_RF_Protocol_Interface/PacketDefinition.h"
-#include "../ERT_RF_Protocol_Interface/ParameterDefinition.h"
+#include "ERT_RF_Protocol_Interface/Protocol.h"
 #include "config.h"
 
 #if SEND_TO_DB
