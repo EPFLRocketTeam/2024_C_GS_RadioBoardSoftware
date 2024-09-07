@@ -16,30 +16,26 @@
 #include "ERT_RF_Protocol_Interface/Protocol.h"
 #include "config.h"
 
+// When SEND_TO_DB is set to true in config.h, the radioboard will attempt to connect to the GSC's wifi.
+// Once connected, it will store data in the GSC's influxDB instance. 
 #if SEND_TO_DB
 #include <WiFiMulti.h>
 #include <InfluxDbClient.h>
 
 WiFiMulti wifiMulti;
-/*
-// WiFi AP SSID
-#define WIFI_SSID "TheCombustionChamber_2.4"
-// WiFi password
-#define WIFI_PASSWORD "niquelcombustiviel"
-*/
-// WiFi AP SSID
 #define WIFI_SSID "ERT_GS_WIFI"
-// WiFi password
 #define WIFI_PASSWORD "ERTGSRFBG"
 AsyncUDP udp;
 
-// InfluxDB  server url. Don't use localhost, always server name or ip address.
-// E.g. http://192.168.1.48:8086 (In InfluxDB 2 UI -> Load Data -> Client Libraries),
+// InfluxDB server url. Don't use localhost, always server name or ip address.
+// E.g. http://192.168.1.48:8086 (In InfluxDB 2 UI -> Load Data -> Client Libraries)
+
 // #define INFLUXDB_URL "http://172.31.112.228:8086"
 #define INFLUXDB_URL "http://gs.local:8086"
+
 // InfluxDB 2 server or cloud API authentication token (Use: InfluxDB UI -> Load Data -> Tokens -> <select token>)
 #define INFLUXDB_TOKEN "PJj8u6PZN1QVggN1lkhb1bkoX9rtegXEsdh8Mk9VeWw_mvqTobYfZJpXRM2T5Z_EDWziw1zN-MdUIEo6aGB5pQ==" // NUC token
-// #define INFLUXDB_TOKEN "iuRjFlnrry3usfeOw62O_T03RmIqyppnPkUqsuAkGflfXoBdSpkgme-kg5IH1NBQNp7_cEMUY53q8KhtQDp6MA=="
+
 // InfluxDB 2 organization id (Use: InfluxDB UI -> Settings -> Profile -> <name under tile> )
 // #define INFLUXDB_ORG "Xstrato"
 #define INFLUXDB_ORG "29306b5a85a43289"
@@ -48,14 +44,14 @@ AsyncUDP udp;
 // InfluxDB client instance
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 
+
 #ifdef GSE_DOWNLINK
-// Data point
-// Point AVTelemetry("AVTelemetry");
 Point GSETelemetry("GSETelemetry");
 
 void setupInfluxDb();
 void plotPoints(PacketGSE_downlink packet);
 #endif
+
 #ifdef AV_DOWNLINK
 Point AVTelemetry("AVTelemetry");
 
@@ -63,7 +59,6 @@ void setupInfluxDb();
 double compute_downrange(double rocket_lat, double rocket_lon);
 void plotPoints(av_downlink_t packet);
 #endif
-
 #endif
 
 #define LED_COLOR_TIME 100 // Color of the led will be changed for x ms each time a packet is received
@@ -202,7 +197,7 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
 	delete[] packetToSend;
 	
-	// Should the database be enabled, any received packet is also pushed to the database.
+	// Should the database be enabled, any received packet is also broadcasted on wifi.
 	#if SEND_TO_DB
 	#ifdef AV_DOWNLINK
 	av_downlink_t packet_debug;
@@ -217,7 +212,7 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	#endif
 	#endif
 	
-	// Should the database be enabled, points are plotted.
+	// Should the database be enabled, current readings are added to the timeseries.
 	#if SEND_TO_DB
 		// InfluxDB stream
 		#if GSE_DOWNLINK
@@ -277,6 +272,7 @@ void setupInfluxDb() {
 		SERIAL_TO_PC.println(client.getLastErrorMessage());
 	}
 }
+
 #ifdef GSE_DOWNLINK
 void plotPoints(PacketGSE_downlink packet) {
 	// Point data
@@ -294,20 +290,21 @@ void plotPoints(PacketGSE_downlink packet) {
 	
 }
 #endif
+
 #ifdef AV_DOWNLINK
 void plotPoints(av_downlink_t packet) {
-// Point data
+	// Point data
 	AVTelemetry.addField("Lat", packet.gnss_lat);
 	AVTelemetry.addField("Lon", packet.gnss_lon);
 	AVTelemetry.addField("Downrange", compute_downrange(packet.gnss_lat, packet.gnss_lon));
-	SERIAL_TO_PC.println("here we are");
+	// SERIAL_TO_PC.println("here we are");
 	AVTelemetry.addField("Alt", packet.gnss_alt);
 	AVTelemetry.addField("Vertical Speed", packet.gnss_vertical_speed);
 	AVTelemetry.addField("Tank Temperature", packet.tank_temp);
 	AVTelemetry.addField("Chamber Pressure", packet.chamber_pressure);
 	AVTelemetry.addField("N2O Pressure", packet.N2O_pressure);
 	AVTelemetry.addField("AV State", packet.av_state);
-	SERIAL_TO_PC.println("here we are 2");
+	// SERIAL_TO_PC.println("here we are 2");
 	AVTelemetry.addField("Valve Pressurize", packet.engine_state.pressurize== 1 ? 1.0 : 0.0);
 	AVTelemetry.addField("Valve Purge", packet.engine_state.purge == 1 ? 1.0 : 0.0);
 	AVTelemetry.addField("Valve Reserve", packet.engine_state.reserve== 1 ? 1.0 : 0.0);
@@ -315,33 +312,34 @@ void plotPoints(av_downlink_t packet) {
 	AVTelemetry.addField("Servo N2O", packet.engine_state.servo_N2O== 1 ? 1.0 : 0.0);
 	AVTelemetry.addField("Vent Fuel", packet.engine_state.vent_fuel== 1 ? 1.0 : 0.0);
 	AVTelemetry.addField("Vent N2O", packet.engine_state.vent_N2O == 1 ? 1.0 : 0.0);
-	SERIAL_TO_PC.println("here we are 3");
+	// SERIAL_TO_PC.println("here we are 3");
 	if (!client.writePoint(AVTelemetry)) {
 		Serial.print("InfluxDB write failed: ");
 		Serial.println(client.getLastErrorMessage());
 	}
-	SERIAL_TO_PC.print("InfluxDB write success");
+	// SERIAL_TO_PC.print("InfluxDB write success");
 } 
-#endif
-#endif
+
 double compute_downrange(double rocket_lat, double rocket_lon) {
-		float gs_lat = GS_LAT;
-		float gs_lon = GS_LON;
+	float gs_lat = GS_LAT;
+	float gs_lon = GS_LON;
 
-		// haversineDistance
-		double earthRadius = 6371000.0;
-		gs_lat = gs_lat * M_PI / 180.0;
-		gs_lon = gs_lon * M_PI / 180.0;
+	// haversineDistance
+	double earthRadius = 6371000.0;
+	gs_lat = gs_lat * M_PI / 180.0;
+	gs_lon = gs_lon * M_PI / 180.0;
 
-		rocket_lat = rocket_lat * M_PI / 180.0;
-		rocket_lon = rocket_lon * M_PI / 180.0;
+	rocket_lat = rocket_lat * M_PI / 180.0;
+	rocket_lon = rocket_lon * M_PI / 180.0;
 
-		double dlat = rocket_lat - gs_lat;
-		double dlon = rocket_lon - gs_lon;
+	double dlat = rocket_lat - gs_lat;
+	double dlon = rocket_lon - gs_lon;
 
-		double a = sin(dlat/2) * sin(dlat/2) + cos(gs_lat) * cos(rocket_lat) * sin(dlon/2) * sin(dlon/2);
-		double c = 2 * atan2(sqrt(a), sqrt(1-a));
-		double distance = earthRadius * c;
+	double a = sin(dlat/2) * sin(dlat/2) + cos(gs_lat) * cos(rocket_lat) * sin(dlon/2) * sin(dlon/2);
+	double c = 2 * atan2(sqrt(a), sqrt(1-a));
+	double distance = earthRadius * c;
 		
-		return distance;
-	}
+	return distance;
+}
+#endif
+#endif
