@@ -64,6 +64,12 @@ void plotPoints(av_downlink_t packet);
 #define LED_COLOR_TIME 100 // Color of the led will be changed for x ms each time a packet is received
 static unsigned long lastPacketReceived = 0;
 
+#if DEBUG
+#if UPLINK
+av_uplink_t packet_debug{0, 10};
+#endif
+#endif
+
 uint32_t colors[] = {
 	0xFF0000, // Red
 	0x00FF00, // Green
@@ -109,7 +115,7 @@ void setup()
 	LoRa.setPins(LORA_CS, LORA_RST, LORA_INT0);
 	LoRa.setSPI(SPI);
 
-	if (DEBUG && !LoRa.begin(LORA_FREQ)) SERIAL_TO_PC.println("Starting LoRa failed!");
+	if (!LoRa.begin(LORA_FREQ)) SERIAL_TO_PC.println("Starting LoRa failed!");
 
 	// Set LoRa parameters
 	LoRa.setTxPower(LORA_POWER);
@@ -153,6 +159,7 @@ const unsigned long totalBitsToSend = 10000;
 
 void loop() {
 
+
 	// Incoming data from the LoRa is processed.
 	// While this is config-independant, it won't do much if the LoRa is not supposed to act as Rx.
 	while (LoRaRxBuffer.available()) {
@@ -177,8 +184,8 @@ void handlePacketLoRa(int packetSize) {
 	// Debug message
 	SERIAL_TO_PC.println("Packet received");
 	SERIAL_TO_PC.println(packetSize);
-
-	// Incoming data is stored in the LoRaRxBuffer for decoding by Cpasule
+	return;
+	// Incoming data is stored in the LoRaRxBuffer for decoding by Capsule
 	for (int i = 0; i < packetSize; i++) {
 		LoRaRxBuffer.write(LoRa.read());
 	}
