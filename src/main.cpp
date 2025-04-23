@@ -109,7 +109,7 @@ void setup()
 	LoRa.setPins(LORA_CS, LORA_RST, LORA_INT0);
 	LoRa.setSPI(SPI);
 
-	if (DEBUG && !LoRa.begin(LORA_FREQ)) SERIAL_TO_PC.println("Starting LoRa failed!");
+	if (!LoRa.begin(LORA_FREQ)) SERIAL_TO_PC.println("Starting LoRa failed!");
 
 	// Set LoRa parameters
 	LoRa.setTxPower(LORA_POWER);
