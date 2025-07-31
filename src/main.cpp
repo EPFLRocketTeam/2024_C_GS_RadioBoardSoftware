@@ -131,15 +131,18 @@ void setup()
 	#endif
 
 	#if (LORA_INVERSE_IQ)
-	LoRa.enableInvertIQ();
+		LoRa.disableInvertIQ();
+
 	#else
-	LoRa.disableInvertIQ();
+		LoRa.enableInvertIQ();
+
 	#endif
+	
 
 	LoRa.onReceive(handlePacketLoRa);
 	LoRa.receive();
 	LoRa.receive();
-	  
+
 	// WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	#if SEND_TO_DB
 	setupInfluxDb();
@@ -156,6 +159,10 @@ const int numPacketSizes = sizeof(packetSizes) / sizeof(packetSizes[0]);
 const uint8_t packetSize = 0xFF; // Packet size in bytes
 const unsigned long targetDataRate = 367000; // Target data rate in bits per second
 const unsigned long totalBitsToSend = 10000;
+int packet_number = 0;
+#ifdef FAKE_AV
+unsigned long lastPacketEmitted = 0;
+#endif 
 
 void loop() {
 
@@ -177,6 +184,26 @@ void loop() {
 		led.fill(colors[INITIAL_LED_COLOR]);
 		led.show();
 	}
+	#ifdef FAKE_AV
+	if (millis() - lastPacketEmitted > 3000) {
+		av_downlink_t p;
+		p.packet_nbr = packet_number++;
+		handleUartCapsule(CAPSULE_ID::HOPPER_DOWNLINK, (uint8_t *)&p, AV_downlink_packet_size);
+		lastPacketEmitted = millis();
+	}
+	
+
+	
+	#endif
+/*
+	#ifdef AV_DOWNLINK
+	int packetSize = LoRa.parsePacket();
+    if (packetSize > 0) {
+        SERIAL_TO_PC.print("Packet received (polling)! Size: ");
+        SERIAL_TO_PC.println(packetSize);
+        handlePacketLoRa(packetSize);
+    }
+	#endif*/
 }
 
 // Handler for raw LoRa Rx data
@@ -184,7 +211,8 @@ void handlePacketLoRa(int packetSize) {
 	// Debug message
 	SERIAL_TO_PC.println("Packet received");
 	SERIAL_TO_PC.println(packetSize);
-	return;
+	
+
 	// Incoming data is stored in the LoRaRxBuffer for decoding by Capsule
 	for (int i = 0; i < packetSize; i++) {
 		LoRaRxBuffer.write(LoRa.read());
@@ -245,8 +273,10 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	LoRa.beginPacket();
 	LoRa.write(packetToSend,LoRaCapsule.getCodedLen(len));
 	LoRa.endPacket();
+
 	LoRa.receive();
 	LoRa.receive();
+
 	delete[] packetToSend;
 }
 

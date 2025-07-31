@@ -1,6 +1,6 @@
 #define DEBUG false
 
-#define MODE_STANDALONE true
+#define MODE_STANDALONE false
 #define SEND_TO_DB false
 
 // In standalone mode, the board will always send data to the PC
@@ -50,10 +50,10 @@
 	#define LORA_POWER        AV_DOWNLINK_POWER
 	#define LORA_BW           AV_DOWNLINK_BW
 	#define LORA_SF           AV_DOWNLINK_SF
-	#define LORA_CR           5
+	#define LORA_CR           AV_DOWNLINK_CR //5
 	#define LORA_PREAMBLE_LEN AV_DOWNLINK_PREAMBLE_LEN
 	#define LORA_SYNC_WORD    AV_DOWNLINK_SYNC_WORD
-	#define LORA_CRC          false //AV_DOWNLINK_CRC
+	#define LORA_CRC          AV_DOWNLINK_CRC //false
 	#define LORA_INVERSE_IQ   AV_DOWNLINK_INVERSE_IQ
 	#define INITIAL_LED_COLOR 1
 
@@ -69,7 +69,7 @@
 	#define LORA_PREAMBLE_LEN GSE_DOWNLINK_PREAMBLE_LEN
 	#define LORA_SYNC_WORD    GSE_DOWNLINK_SYNC_WORD
 	#define LORA_CRC          GSE_DOWNLINK_CRC
-	#define LORA_INVERSE_IQ   GSE_DOWNLINK_INVERSE_IQ
+	#define LORA_INVERSE_IQ   true //GSE_DOWNLINK_INVERSE_IQ
 
 	#define INITIAL_LED_COLOR 2
 
