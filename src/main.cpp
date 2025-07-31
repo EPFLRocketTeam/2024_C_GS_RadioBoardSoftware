@@ -188,11 +188,14 @@ void loop() {
 	if (millis() - lastPacketEmitted > 3000) {
 		av_downlink_t p;
 		p.packet_nbr = packet_number++;
-		handleUartCapsule(CAPSULE_ID::HOPPER_DOWNLINK, (uint8_t *)&p, AV_downlink_packet_size);
+		#ifdef RF_PROTOCOL_ICARUS
+		handleUartCapsule(CAPSULE_ID::HOPPER_TELEMETRY, (uint8_t *)&p, av_downlink_size);
+		#else 
+		handleUartCapsule(CAPSULE_ID::AV_TELEMETRY, (uint8_t *)&p, av_downlink_size);
+		#endif 
+
 		lastPacketEmitted = millis();
 	}
-	
-
 	
 	#endif
 /*
