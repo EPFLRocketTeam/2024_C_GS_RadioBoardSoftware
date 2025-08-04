@@ -185,7 +185,7 @@ void loop() {
 		led.show();
 	}
 	#ifdef FAKE_AV
-	if (millis() - lastPacketEmitted > 3000) {
+	if (millis() - lastPacketEmitted > 1000) {
 		av_downlink_t p;
 		p.packet_nbr = packet_number++;
 		#ifdef RF_PROTOCOL_ICARUS
