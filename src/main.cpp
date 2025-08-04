@@ -190,10 +190,9 @@ void loop() {
 		p.packet_nbr = packet_number++;
 		#ifdef RF_PROTOCOL_ICARUS
 		handleUartCapsule(CAPSULE_ID::HOPPER_TELEMETRY, (uint8_t *)&p, av_downlink_size);
-		#else 
+		#else
 		handleUartCapsule(CAPSULE_ID::AV_TELEMETRY, (uint8_t *)&p, av_downlink_size);
-		#endif 
-
+		#endif
 		lastPacketEmitted = millis();
 	}
 	
