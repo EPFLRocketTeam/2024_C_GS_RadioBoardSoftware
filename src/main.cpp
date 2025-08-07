@@ -197,6 +197,13 @@ void loop() {
 	}
 	
 	#endif
+
+	#ifdef FAKE_ABORT_BOARD
+	av_uplink_t packet = { AV_CMD_ABORT, 0 };
+  	uint8_t *packetToSend = UartCapsule.encode(ABORT_BOARD, reinterpret_cast<uint8_t*>(&packet), av_uplink_size);
+	UART_PORT.write(packetToSend, UartCapsule.getCodedLen(av_uplink_size));
+	delay(1000);
+	#endif
 /*
 	#ifdef AV_DOWNLINK
 	int packetSize = LoRa.parsePacket();
