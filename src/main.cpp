@@ -130,12 +130,12 @@ void setup()
 	LoRa.disableCrc();
 	#endif
 
-	#if (LORA_INVERSE_IQ)
-		LoRa.disableInvertIQ();
 
+	// ! \\ Ne fonctionne que en disableInvertIQ
+	#if (LORA_INVERSE_IQ)	
+		LoRa.disableInvertIQ();
 	#else
 		LoRa.enableInvertIQ();
-
 	#endif
 	
 
@@ -222,6 +222,35 @@ void loop() {
 	#endif*/
 }
 
+
+void logAvDownlink(const uint8_t *data) {
+  av_downlink_t pkt;
+  memcpy(&pkt, data, av_downlink_size);
+
+  SERIAL_TO_PC.println(F("=== AV Downlink Packet ==="));
+  SERIAL_TO_PC.print(F("Packet Number: ")); Serial.println(pkt.packet_nbr);
+  SERIAL_TO_PC.print(F("GNSS Lon: ")); Serial.print(pkt.gnss_lon * 1e-3); Serial.println(F(" °"));
+  SERIAL_TO_PC.print(F("GNSS Lat: ")); Serial.print(pkt.gnss_lat * 1e-3); Serial.println(F(" °"));
+  SERIAL_TO_PC.print(F("GNSS Alt: ")); Serial.print(pkt.gnss_alt * 10); Serial.println(F(" m"));
+  SERIAL_TO_PC.print(F("GNSS Vertical Speed: ")); Serial.print(pkt.gnss_vertical_speed * 10); Serial.println(F(" km/h"));
+  SERIAL_TO_PC.print(F("N2 Pressure: ")); Serial.print(pkt.N2_pressure * 0.5); Serial.println(F(" bar"));
+  SERIAL_TO_PC.print(F("Fuel Pressure: ")); Serial.print(pkt.fuel_pressure * 0.5); Serial.println(F(" bar"));
+  SERIAL_TO_PC.print(F("LOX Pressure: ")); Serial.print(pkt.LOX_pressure * 0.5); Serial.println(F(" bar"));
+  SERIAL_TO_PC.print(F("Fuel Level: ")); Serial.print(pkt.fuel_level * 0.25); Serial.println(F(" L"));
+  SERIAL_TO_PC.print(F("LOX Level: ")); Serial.print(pkt.LOX_level * 0.25); Serial.println(F(" L"));
+  SERIAL_TO_PC.print(F("N2 Temp: ")); Serial.print(pkt.N2_temp); Serial.println(F(" °C"));
+  SERIAL_TO_PC.print(F("LOX Temp: ")); Serial.print(pkt.LOX_temp); Serial.println(F(" °C"));
+  SERIAL_TO_PC.print(F("LOX Inj Temp: ")); Serial.print(pkt.LOX_inj_temp); Serial.println(F(" °C"));
+  SERIAL_TO_PC.print(F("LPB Voltage: ")); Serial.print(pkt.lpb_voltage * 0.25); Serial.println(F(" V"));
+  SERIAL_TO_PC.print(F("HPB Voltage: ")); Serial.print(pkt.hpb_voltage * 0.25); Serial.println(F(" V"));
+  SERIAL_TO_PC.print(F("AV FC Temp: ")); Serial.print(pkt.av_fc_temp); Serial.println(F(" °C"));
+  SERIAL_TO_PC.print(F("Ambient Temp: ")); Serial.print(pkt.ambient_temp); Serial.println(F(" °C"));
+  SERIAL_TO_PC.print(F("Engine State: 0b")); Serial.println(pkt.engine_state, BIN);
+  SERIAL_TO_PC.print(F("AV State: ")); Serial.println(pkt.av_state);
+  SERIAL_TO_PC.print(F("Camera Rec: ")); Serial.println(pkt.cam_rec);
+  SERIAL_TO_PC.println(F("=========================="));
+}
+
 // Handler for raw LoRa Rx data
 void handlePacketLoRa(int packetSize) {
 	// Debug message
@@ -235,6 +264,8 @@ void handlePacketLoRa(int packetSize) {
 	}
 }
 
+
+
 void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// Nice visual clue to show that the board has received a new packet.
 	lastPacketReceived = millis();
@@ -245,7 +276,12 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// The radio boards do not do any processing besides LoRa/Capsule encoding/decoding.
 	// The packet thusly is routed through the UART_PORT.
 	uint8_t* packetToSend = UartCapsule.encode(packetId,dataIn,len);
+	// logAvDownlink(dataIn);
+	av_downlink_t pkt;
+  	memcpy(&pkt, dataIn, av_downlink_size);
+	SERIAL_TO_PC.print("Packet number ="); SERIAL_TO_PC.println(pkt.packet_nbr);
 	UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
+
 	delete[] packetToSend;
 	
 	// Should the database be enabled, any received packet is also broadcasted on wifi.
