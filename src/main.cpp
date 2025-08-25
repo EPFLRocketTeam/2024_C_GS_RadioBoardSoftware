@@ -94,7 +94,7 @@ void setup()
 	// Debug channel setup
 	SERIAL_TO_PC.begin(SERIAL_TO_PC_BAUD);
 
-	sleep(5);
+	sleep(4);
 	SERIAL_TO_PC.println("Startup Started");
 	SERIAL_TO_PC.setTxTimeoutMs(0);
 
@@ -141,7 +141,8 @@ void setup()
 
 	LoRa.onReceive(handlePacketLoRa);
 	LoRa.receive();
-	LoRa.receive();
+LoRa.receive();
+
 
 	// WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	#if SEND_TO_DB
@@ -188,6 +189,7 @@ void loop() {
 	if (millis() - lastPacketEmitted > 1000) {
 		av_downlink_t p;
 		p.packet_nbr = packet_number++;
+		p.av_fc_temp = 10;
 		#ifdef RF_PROTOCOL_ICARUS
 		handleUartCapsule(CAPSULE_ID::HOPPER_TELEMETRY, (uint8_t *)&p, av_downlink_size);
 		#else
@@ -211,6 +213,8 @@ void loop() {
 	led.show();
 	}
 	#endif
+
+
 /*
 	#ifdef AV_DOWNLINK
 	int packetSize = LoRa.parsePacket();
@@ -326,8 +330,9 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	LoRa.write(packetToSend,LoRaCapsule.getCodedLen(len));
 	LoRa.endPacket();
 
+	
 	LoRa.receive();
-	LoRa.receive();
+
 
 	delete[] packetToSend;
 }
