@@ -5,70 +5,11 @@
 #include <LoopbackStream.h>
 #include <SPI.h>
 
-#include "esp_event_loop.h"
-#include "esp_system.h"
-#include "esp_event.h"
-#include "esp_wifi.h"
-
-
-#include "AsyncUDP.h"
-
 #include "ERT_RF_Protocol_Interface/Protocol.h"
 #include "config.h"
 
-// When SEND_TO_DB is set to true in config.h, the radioboard will attempt to connect to the GSC's wifi.
-// Once connected, it will store data in the GSC's influxDB instance. 
-#if SEND_TO_DB
-#include <WiFiMulti.h>
-#include <InfluxDbClient.h>
-
-WiFiMulti wifiMulti;
-#define WIFI_SSID "ERT_GS_WIFI"
-#define WIFI_PASSWORD "ERTGSRFBG"
-AsyncUDP udp;
-
-// InfluxDB server url. Don't use localhost, always server name or ip address.
-// E.g. http://192.168.1.48:8086 (In InfluxDB 2 UI -> Load Data -> Client Libraries)
-
-// #define INFLUXDB_URL "http://172.31.112.228:8086"
-#define INFLUXDB_URL "http://gs.local:8086"
-
-// InfluxDB 2 server or cloud API authentication token (Use: InfluxDB UI -> Load Data -> Tokens -> <select token>)
-#define INFLUXDB_TOKEN "PJj8u6PZN1QVggN1lkhb1bkoX9rtegXEsdh8Mk9VeWw_mvqTobYfZJpXRM2T5Z_EDWziw1zN-MdUIEo6aGB5pQ==" // NUC token
-
-// InfluxDB 2 organization id (Use: InfluxDB UI -> Settings -> Profile -> <name under tile> )
-// #define INFLUXDB_ORG "Xstrato"
-#define INFLUXDB_ORG "29306b5a85a43289"
-#define INFLUXDB_BUCKET "Nordend"
-
-// InfluxDB client instance
-InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-
-
-#ifdef GSE_DOWNLINK
-Point GSETelemetry("GSETelemetry");
-
-void setupInfluxDb();
-void plotPoints(PacketGSE_downlink packet);
-#endif
-
-#ifdef AV_DOWNLINK
-Point AVTelemetry("AVTelemetry");
-
-void setupInfluxDb();
-double compute_downrange(double rocket_lat, double rocket_lon);
-void plotPoints(av_downlink_t packet);
-#endif
-#endif
-
 #define LED_COLOR_TIME 100 // Color of the led will be changed for x ms each time a packet is received
 static unsigned long lastPacketReceived = 0;
-
-#if DEBUG
-#if UPLINK
-av_uplink_t packet_debug{0, 10};
-#endif
-#endif
 
 uint32_t colors[] = {
 	0xFF0000, // Red
@@ -89,8 +30,7 @@ LoopbackStream LoRaRxBuffer(1024);
 CapsuleStatic LoRaCapsule(handleLoRaCapsule);
 CapsuleStatic UartCapsule(handleUartCapsule);
 
-void setup()
-{
+void setup() {
 	// Debug channel setup
 	SERIAL_TO_PC.begin(SERIAL_TO_PC_BAUD);
 
@@ -133,21 +73,15 @@ void setup()
 
 	// ! \\ Ne fonctionne que en disableInvertIQ
 	#if (LORA_INVERSE_IQ)	
-		LoRa.disableInvertIQ();
-	#else
 		LoRa.enableInvertIQ();
+	#else
+		LoRa.disableInvertIQ();
 	#endif
 	
 
 	LoRa.onReceive(handlePacketLoRa);
 	LoRa.receive();
-LoRa.receive();
-
-
-	// WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	#if SEND_TO_DB
-	setupInfluxDb();
-	#endif
+	LoRa.receive();
  
 	SERIAL_TO_PC.println("Startup Finished");
 }
@@ -161,9 +95,6 @@ const uint8_t packetSize = 0xFF; // Packet size in bytes
 const unsigned long targetDataRate = 367000; // Target data rate in bits per second
 const unsigned long totalBitsToSend = 10000;
 int packet_number = 0;
-#ifdef FAKE_AV
-unsigned long lastPacketEmitted = 0;
-#endif 
 
 void loop() {
 
@@ -185,38 +116,8 @@ void loop() {
 		led.fill(colors[INITIAL_LED_COLOR]);
 		led.show();
 	}
-	#ifdef FAKE_AV
-	if (millis() - lastPacketEmitted > 1000) {
-		av_downlink_t p;
-		p.packet_nbr = packet_number++;
-		p.av_fc_temp = 10;
-		#ifdef RF_PROTOCOL_ICARUS
-		handleUartCapsule(CAPSULE_ID::HOPPER_TELEMETRY, (uint8_t *)&p, av_downlink_size);
-		#else
-		handleUartCapsule(CAPSULE_ID::AV_TELEMETRY, (uint8_t *)&p, av_downlink_size);
-		#endif
-		lastPacketEmitted = millis();
-	}
-	
-	#endif
 
-	#ifdef FAKE_ABORT_BOARD
-	if (millis() - lastPacketReceived > 1000) {
-	lastPacketReceived = millis();
-	av_uplink_t packet = { AV_CMD_ABORT, 0 };
-  	uint8_t *packetToSend = UartCapsule.encode(ABORT_BOARD, reinterpret_cast<uint8_t*>(&packet), av_uplink_size);
-	UART_PORT.write(packetToSend, UartCapsule.getCodedLen(av_uplink_size));
-	uint32_t ledColor = colors[INITIAL_LED_COLOR+1];
-	
-
-	led.fill(ledColor);
-	led.show();
-	}
-	#endif
-
-
-/*
-	#ifdef AV_DOWNLINK
+	/*#ifdef AV_DOWNLINK
 	int packetSize = LoRa.parsePacket();
     if (packetSize > 0) {
         SERIAL_TO_PC.print("Packet received (polling)! Size: ");
@@ -226,34 +127,6 @@ void loop() {
 	#endif*/
 }
 
-
-void logAvDownlink(const uint8_t *data) {
-  av_downlink_t pkt;
-  memcpy(&pkt, data, av_downlink_size);
-
-  SERIAL_TO_PC.println(F("=== AV Downlink Packet ==="));
-  SERIAL_TO_PC.print(F("Packet Number: ")); Serial.println(pkt.packet_nbr);
-  SERIAL_TO_PC.print(F("GNSS Lon: ")); Serial.print(pkt.gnss_lon * 1e-3); Serial.println(F(" °"));
-  SERIAL_TO_PC.print(F("GNSS Lat: ")); Serial.print(pkt.gnss_lat * 1e-3); Serial.println(F(" °"));
-  SERIAL_TO_PC.print(F("GNSS Alt: ")); Serial.print(pkt.gnss_alt * 10); Serial.println(F(" m"));
-  SERIAL_TO_PC.print(F("GNSS Vertical Speed: ")); Serial.print(pkt.gnss_vertical_speed * 10); Serial.println(F(" km/h"));
-  SERIAL_TO_PC.print(F("N2 Pressure: ")); Serial.print(pkt.N2_pressure * 0.5); Serial.println(F(" bar"));
-  SERIAL_TO_PC.print(F("Fuel Pressure: ")); Serial.print(pkt.fuel_pressure * 0.5); Serial.println(F(" bar"));
-  SERIAL_TO_PC.print(F("LOX Pressure: ")); Serial.print(pkt.LOX_pressure * 0.5); Serial.println(F(" bar"));
-  SERIAL_TO_PC.print(F("Fuel Level: ")); Serial.print(pkt.fuel_level * 0.25); Serial.println(F(" L"));
-  SERIAL_TO_PC.print(F("LOX Level: ")); Serial.print(pkt.LOX_level * 0.25); Serial.println(F(" L"));
-  SERIAL_TO_PC.print(F("N2 Temp: ")); Serial.print(pkt.N2_temp); Serial.println(F(" °C"));
-  SERIAL_TO_PC.print(F("LOX Temp: ")); Serial.print(pkt.LOX_temp); Serial.println(F(" °C"));
-  SERIAL_TO_PC.print(F("LOX Inj Temp: ")); Serial.print(pkt.LOX_inj_temp); Serial.println(F(" °C"));
-  SERIAL_TO_PC.print(F("LPB Voltage: ")); Serial.print(pkt.lpb_voltage * 0.25); Serial.println(F(" V"));
-  SERIAL_TO_PC.print(F("HPB Voltage: ")); Serial.print(pkt.hpb_voltage * 0.25); Serial.println(F(" V"));
-  SERIAL_TO_PC.print(F("AV FC Temp: ")); Serial.print(pkt.av_fc_temp); Serial.println(F(" °C"));
-  SERIAL_TO_PC.print(F("Ambient Temp: ")); Serial.print(pkt.ambient_temp); Serial.println(F(" °C"));
-  SERIAL_TO_PC.print(F("Engine State: 0b")); Serial.println(pkt.engine_state, BIN);
-  SERIAL_TO_PC.print(F("AV State: ")); Serial.println(pkt.av_state);
-  SERIAL_TO_PC.print(F("Camera Rec: ")); Serial.println(pkt.cam_rec);
-  SERIAL_TO_PC.println(F("=========================="));
-}
 
 // Handler for raw LoRa Rx data
 void handlePacketLoRa(int packetSize) {
@@ -268,8 +141,6 @@ void handlePacketLoRa(int packetSize) {
 	}
 }
 
-
-
 void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// Nice visual clue to show that the board has received a new packet.
 	lastPacketReceived = millis();
@@ -280,43 +151,13 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// The radio boards do not do any processing besides LoRa/Capsule encoding/decoding.
 	// The packet thusly is routed through the UART_PORT.
 	uint8_t* packetToSend = UartCapsule.encode(packetId,dataIn,len);
-	// logAvDownlink(dataIn);
+	
 	av_downlink_t pkt;
   	memcpy(&pkt, dataIn, av_downlink_size);
 	SERIAL_TO_PC.print("Packet number ="); SERIAL_TO_PC.println(pkt.packet_nbr);
 	UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
 
 	delete[] packetToSend;
-	
-	// Should the database be enabled, any received packet is also broadcasted on wifi.
-	#if SEND_TO_DB
-	#ifdef AV_DOWNLINK
-	av_downlink_t packet_debug;
-	// uint8_t p[80];
-	//av_downlink_t packet_debug;
-	memcpy(&packet_debug, dataIn, 65);
-
-	//SERIAL_TO_PC.println(packet_debug.gnss_alt);
-	// memcpy(p, &dataIn, 80);
-	SERIAL_TO_PC.println(packet_debug.gnss_alt);
-	udp.broadcastTo(dataIn, len, 1235);
-	#endif
-	#endif
-	
-	// Should the database be enabled, current readings are added to the timeseries.
-	#if SEND_TO_DB
-		// InfluxDB stream
-		#if GSE_DOWNLINK
-			PacketGSE_downlink packetInflux;
-			memcpy(&packetInflux, dataIn, packetGSE_downlink_size);
-			plotPoints(packetInflux);
-		#endif
-		#if AV_DOWNLINK
-			av_downlink_t packetInflux;
-			memcpy(&packetInflux, dataIn, 65);
-			plotPoints(packetInflux);
-		#endif
-	#endif
 }
 
 void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
@@ -325,115 +166,22 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	led.fill(ledColor);
 	led.show();
 
+	if(packetId == GSC_INTERNAL) {
+		gsc_internal_t internal_packet{
+			.rssi = LoRa.packetRssi(),
+			.snr = LoRa.packetSnr(),
+		};
+		
+		uint8_t* packetToSend = UartCapsule.encode(INTERNAL_CAPSULE_ID, (uint8_t*) &internal_packet, gsc_internal_size);
+		UART_PORT.write(packetToSend, UartCapsule.getCodedLen(gsc_internal_size));
+		delete[] packetToSend;
+	}
+
 	uint8_t* packetToSend = LoRaCapsule.encode(packetId,dataIn,len);
 	LoRa.beginPacket();
 	LoRa.write(packetToSend,LoRaCapsule.getCodedLen(len));
 	LoRa.endPacket();
-
-	
 	LoRa.receive();
-
 
 	delete[] packetToSend;
 }
-
-#if SEND_TO_DB
-void setupInfluxDb() {
-	// Connect WiFi
-   
-	WiFi.mode(WIFI_STA);
-	wifiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);
-	while (wifiMulti.run() != WL_CONNECTED) {
-		SERIAL_TO_PC.print(".");
-		delay(500);
-	}
-
-	SERIAL_TO_PC.println();
-	SERIAL_TO_PC.println("Wifi connected :-)");
-
-	// Set InfluxDB 1 authentication params
-	// client.setConnectionParamsV1(INFLUXDB_URL, INFLUXDB_DB_NAME, INFLUXDB_USER, INFLUXDB_PASSWORD);
-
-	// Add constant tags - only once
-	// GSETelemetry.addTag("device", "GSEReceiver");
-	
-	// Check server connection
-	if (client.validateConnection()) {
-		SERIAL_TO_PC.print("Connected to InfluxDB: ");
-		SERIAL_TO_PC.println(client.getServerUrl());
-	} else {
-		SERIAL_TO_PC.print("InfluxDB connection failed: ");
-		SERIAL_TO_PC.println(client.getLastErrorMessage());
-	}
-}
-
-#ifdef GSE_DOWNLINK
-void plotPoints(PacketGSE_downlink packet) {
-	// Point data
-	GSETelemetry.addField("Tank Pressure", packet.tankPressure);
-	GSETelemetry.addField("Tank Temperature", packet.tankTemperature);
-	GSETelemetry.addField("Filling Pressure", packet.fillingPressure);
-	GSETelemetry.addField("loadcellRaw", packet.loadcellRaw);
-	GSETelemetry.addField("Fill N2O", packet.status.fillingN2O == ACTIVE ? 1.0:0.0);
-	GSETelemetry.addField("Disconnect Active", (packet.disconnectActive == ACTIVE ? 1.0:0.0));
-	GSETelemetry.addField("GSE Purge", (packet.status.vent == ACTIVE ? 1.0:0.0));
-	if (!client.writePoint(GSETelemetry)) {
-		Serial.print("InfluxDB write failed: ");
-		Serial.println(client.getLastErrorMessage());
-	}
-	
-}
-#endif
-
-#ifdef AV_DOWNLINK
-void plotPoints(av_downlink_t packet) {
-	// Point data
-	AVTelemetry.addField("Lat", packet.gnss_lat);
-	AVTelemetry.addField("Lon", packet.gnss_lon);
-	AVTelemetry.addField("Downrange", compute_downrange(packet.gnss_lat, packet.gnss_lon));
-	// SERIAL_TO_PC.println("here we are");
-	AVTelemetry.addField("Alt", packet.gnss_alt);
-	AVTelemetry.addField("Vertical Speed", packet.gnss_vertical_speed);
-	AVTelemetry.addField("Tank Temperature", packet.tank_temp);
-	AVTelemetry.addField("Chamber Pressure", packet.chamber_pressure);
-	AVTelemetry.addField("N2O Pressure", packet.N2O_pressure);
-	AVTelemetry.addField("AV State", packet.av_state);
-	// SERIAL_TO_PC.println("here we are 2");
-	AVTelemetry.addField("Valve Pressurize", packet.engine_state.pressurize== 1 ? 1.0 : 0.0);
-	AVTelemetry.addField("Valve Purge", packet.engine_state.purge == 1 ? 1.0 : 0.0);
-	AVTelemetry.addField("Valve Reserve", packet.engine_state.reserve== 1 ? 1.0 : 0.0);
-	AVTelemetry.addField("Servo Fuel", packet.engine_state.servo_fuel== 1 ? 1.0 : 0.0);
-	AVTelemetry.addField("Servo N2O", packet.engine_state.servo_N2O== 1 ? 1.0 : 0.0);
-	AVTelemetry.addField("Vent Fuel", packet.engine_state.vent_fuel== 1 ? 1.0 : 0.0);
-	AVTelemetry.addField("Vent N2O", packet.engine_state.vent_N2O == 1 ? 1.0 : 0.0);
-	// SERIAL_TO_PC.println("here we are 3");
-	if (!client.writePoint(AVTelemetry)) {
-		Serial.print("InfluxDB write failed: ");
-		Serial.println(client.getLastErrorMessage());
-	}
-	// SERIAL_TO_PC.print("InfluxDB write success");
-} 
-
-double compute_downrange(double rocket_lat, double rocket_lon) {
-	float gs_lat = GS_LAT;
-	float gs_lon = GS_LON;
-
-	// haversineDistance
-	double earthRadius = 6371000.0;
-	gs_lat = gs_lat * M_PI / 180.0;
-	gs_lon = gs_lon * M_PI / 180.0;
-
-	rocket_lat = rocket_lat * M_PI / 180.0;
-	rocket_lon = rocket_lon * M_PI / 180.0;
-
-	double dlat = rocket_lat - gs_lat;
-	double dlon = rocket_lon - gs_lon;
-
-	double a = sin(dlat/2) * sin(dlat/2) + cos(gs_lat) * cos(rocket_lat) * sin(dlon/2) * sin(dlon/2);
-	double c = 2 * atan2(sqrt(a), sqrt(1-a));
-	double distance = earthRadius * c;
-		
-	return distance;
-}
-#endif
-#endif

@@ -43,6 +43,7 @@
 	#define INITIAL_LED_COLOR 0
 
 	#define RADIOMODULE_NAME "UPLINK"
+	#define INTERNAL_CAPSULE_ID GSC_INTERNAL_UPLINK
 
 // Board is used to receive data from the rocket
 #elif AV_DOWNLINK
@@ -58,6 +59,7 @@
 	#define INITIAL_LED_COLOR 1
 
 	#define RADIMODULE_NAME "AV_DOWNLINK_1"
+	#define INTERNAL_CAPSULE_ID GSC_INTERNAL_VEHICLE_DOWNLINK
 
 	// Board is used to receive data from the GSE
 #elif GSE_DOWNLINK
@@ -74,6 +76,8 @@
 	#define INITIAL_LED_COLOR 2
 
 	#define RADIOMODULE_NAME "GSE_DOWNLINK"
+	#define INTERNAL_CAPSULE_ID GSC_INTERNAL_GSE_DOWNLINK
+
 #endif
 
 #define LORA_CURRENT_LIMIT 120
