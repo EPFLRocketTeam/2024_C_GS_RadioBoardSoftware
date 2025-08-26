@@ -175,6 +175,7 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 		uint8_t* packetToSend = UartCapsule.encode(INTERNAL_CAPSULE_ID, (uint8_t*) &internal_packet, gsc_internal_size);
 		UART_PORT.write(packetToSend, UartCapsule.getCodedLen(gsc_internal_size));
 		delete[] packetToSend;
+		return;
 	}
 
 	uint8_t* packetToSend = LoRaCapsule.encode(packetId,dataIn,len);
