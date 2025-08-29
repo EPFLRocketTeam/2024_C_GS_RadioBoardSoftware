@@ -86,16 +86,6 @@ void setup() {
 	SERIAL_TO_PC.println("Startup Finished");
 }
 
-/*
-const uint16_t packetSizes[] = {8, 16, 32, 64, 128, 256}; // Packet sizes in bytes
-const int numPacketSizes = sizeof(packetSizes) / sizeof(packetSizes[0]);
-*/
-
-const uint8_t packetSize = 0xFF; // Packet size in bytes
-const unsigned long targetDataRate = 367000; // Target data rate in bits per second
-const unsigned long totalBitsToSend = 10000;
-int packet_number = 0;
-
 void loop() {
 
 
