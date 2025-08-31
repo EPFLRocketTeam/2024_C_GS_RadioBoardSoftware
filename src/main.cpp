@@ -141,10 +141,6 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// The radio boards do not do any processing besides LoRa/Capsule encoding/decoding.
 	// The packet thusly is routed through the UART_PORT.
 	uint8_t* packetToSend = UartCapsule.encode(packetId,dataIn,len);
-	
-	av_downlink_t pkt;
-  	memcpy(&pkt, dataIn, av_downlink_size);
-	SERIAL_TO_PC.print("Packet number ="); SERIAL_TO_PC.println(pkt.packet_nbr);
 	UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
 
 	delete[] packetToSend;
@@ -158,6 +154,7 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 
 	if(packetId == GSC_INTERNAL) {
 		gsc_internal_t internal_packet{
+			.timestamp = millis(),
 			.rssi = LoRa.packetRssi(),
 			.snr = LoRa.packetSnr(),
 		};
