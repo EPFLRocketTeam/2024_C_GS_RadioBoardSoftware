@@ -142,8 +142,19 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// The packet thusly is routed through the UART_PORT.
 	uint8_t* packetToSend = UartCapsule.encode(packetId,dataIn,len);
 	UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
-
 	delete[] packetToSend;
+
+	// Send a feedback packet for the GSC
+	gsc_internal_t internal_packet{
+		.timestamp = millis(),
+		.rssi = LoRa.packetRssi(),
+		.snr = LoRa.packetSnr(),
+	};
+		
+	uint8_t* internalToSend = UartCapsule.encode(INTERNAL_CAPSULE_ID, (uint8_t*) &internal_packet, gsc_internal_size);
+	UART_PORT.write(internalToSend, UartCapsule.getCodedLen(gsc_internal_size));
+	delete[] internalToSend;
+	return;
 }
 
 void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
@@ -151,19 +162,6 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	uint32_t ledColor = colors[INITIAL_LED_COLOR+1];
 	led.fill(ledColor);
 	led.show();
-
-	if(packetId == GSC_INTERNAL) {
-		gsc_internal_t internal_packet{
-			.timestamp = millis(),
-			.rssi = LoRa.packetRssi(),
-			.snr = LoRa.packetSnr(),
-		};
-		
-		uint8_t* packetToSend = UartCapsule.encode(INTERNAL_CAPSULE_ID, (uint8_t*) &internal_packet, gsc_internal_size);
-		UART_PORT.write(packetToSend, UartCapsule.getCodedLen(gsc_internal_size));
-		delete[] packetToSend;
-		return;
-	}
 
 	uint8_t* packetToSend = LoRaCapsule.encode(packetId,dataIn,len);
 	LoRa.beginPacket();
