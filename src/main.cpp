@@ -10,6 +10,7 @@
 
 #define LED_COLOR_TIME 100 // Color of the led will be changed for x ms each time a packet is received
 static unsigned long lastPacketReceived = 0;
+static uint8_t currentError = 0;
 
 uint32_t colors[] = {
 	0xFF0000, // Red
@@ -26,7 +27,7 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len);
 void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len);
 
 Adafruit_NeoPixel led(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800); // 1 led
-LoopbackStream LoRaRxBuffer(1024);
+LoopbackStream LoRaRxBuffer(2048);
 CapsuleStatic LoRaCapsule(handleLoRaCapsule);
 CapsuleStatic UartCapsule(handleUartCapsule);
 
@@ -107,28 +108,39 @@ void loop() {
 		led.show();
 	}
 
-	/*#ifdef AV_DOWNLINK
-	int packetSize = LoRa.parsePacket();
-    if (packetSize > 0) {
-        SERIAL_TO_PC.print("Packet received (polling)! Size: ");
-        SERIAL_TO_PC.println(packetSize);
-        handlePacketLoRa(packetSize);
-    }
-	#endif*/
+	if(currentError) {
+		gsc_internal_error_t errorPacket{
+			.timestamp = millis(),
+			.error = currentError,
+		};
+
+		uint8_t* errorToSend = UartCapsule.encode(INTERNAL_ERR_CAPSULE_ID, (uint8_t*) &errorPacket, gsc_internal_error_size);
+		UART_PORT.write(errorToSend, UartCapsule.getCodedLen(gsc_internal_error_size));
+		delete[] errorToSend;
+
+		currentError = 0;
+	}
 }
 
 
 // Handler for raw LoRa Rx data
 void handlePacketLoRa(int packetSize) {
+
+	if(packetSize != LoRaCapsule.getCodedLen(av_downlink_size))
+		currentError |= ERROR_RX_NOT_A_DOWNLINK_PACKET;
+
+	if(LoRaRxBuffer.availableForWrite() < 0)
+		currentError |= ERROR_RX_BUFFER_OVERFLOW;
+
 	// Debug message
 	SERIAL_TO_PC.println("Packet received");
 	SERIAL_TO_PC.println(packetSize);
-	
 
 	// Incoming data is stored in the LoRaRxBuffer for decoding by Capsule
 	for (int i = 0; i < packetSize; i++) {
 		LoRaRxBuffer.write(LoRa.read());
 	}
+
 }
 
 void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
@@ -164,10 +176,13 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	led.show();
 
 	uint8_t* packetToSend = LoRaCapsule.encode(packetId,dataIn,len);
-	LoRa.beginPacket();
-	LoRa.write(packetToSend,LoRaCapsule.getCodedLen(len));
-	LoRa.endPacket();
-	LoRa.receive();
+	if(LoRa.beginPacket()) {
+		LoRa.write(packetToSend,LoRaCapsule.getCodedLen(len));
+		LoRa.endPacket();
+	} else {
+		currentError |= ERROR_TX_FAILURE;
+	}
 
+	LoRa.receive();
 	delete[] packetToSend;
 }
