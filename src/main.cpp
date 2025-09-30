@@ -37,7 +37,7 @@ void setup() {
 
 	sleep(4);
 	SERIAL_TO_PC.println("Startup Started");
-	SERIAL_TO_PC.setTxTimeoutMs(0);
+	// SERIAL_TO_PC.setTxTimeoutMs(0);
 
 	// In standalone mode, UART_PORT = SERIAL_TO_PC. In motherboard mode, UART_PORT = Serial1
 	// We thus only need to initialize UART_PORT in motherboard mode
