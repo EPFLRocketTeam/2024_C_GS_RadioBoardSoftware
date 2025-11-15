@@ -44,6 +44,7 @@ void setup() {
 	#if !MODE_STANDALONE
 	UART_PORT.begin(UART_BAUD, 134217756U, 6, 5); // This for radioboard
 	// UART_PORT.begin(UART_BAUD, 134217756U, 9, 46); // This for cmdIn
+	UART_PORT.setTimeout(0);
 	#endif
 
 	// Light up LED with the color corresponding to the board's config
@@ -107,6 +108,18 @@ void loop() {
 		led.fill(colors[INITIAL_LED_COLOR]);
 		led.show();
 	}
+
+	// sleep(1);
+	// av_downlink_t p;
+	// p.packet_nbr = 42;
+	// uint8_t* packetToSend = LoRaCapsule.encode(CAPSULE_ID::AV_TELEMETRY, (uint8_t *)&p, av_downlink_size);
+	// LoRa.beginPacket();
+	// LoRa.write(packetToSend, LoRaCapsule.getCodedLen(av_downlink_size));
+	// LoRa.endPacket();
+	// UART_PORT.write(packetToSend, LoRaCapsule.getCodedLen(av_downlink_size));
+	// delete[] packetToSend;
+	// UART_PORT.println("Here we send");
+
 
 	if(currentError) {
 		gsc_internal_error_t errorPacket{
