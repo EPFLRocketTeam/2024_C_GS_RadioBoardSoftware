@@ -12,6 +12,10 @@
 static unsigned long lastPacketReceived = 0;
 static uint8_t currentError = 0;
 
+#if DEBUG
+static unsigned long testtime = 0;
+#endif
+
 uint32_t colors[] = {
 	0xFF0000, // Red
 	0x00FF00, // Green
@@ -22,6 +26,7 @@ uint32_t colors[] = {
 	0xFF0800  // Orange
 };
 
+void sendPacket();
 void handlePacketLoRa(int packetSize);
 void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len);
 void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len);
@@ -36,7 +41,7 @@ void setup() {
 	SERIAL_TO_PC.begin(SERIAL_TO_PC_BAUD);
 
 	sleep(4);
-	SERIAL_TO_PC.println("Startup Started");
+	// SERIAL_TO_PC.println("Startup Started");
 	// SERIAL_TO_PC.setTxTimeoutMs(0);
 
 	// In standalone mode, UART_PORT = SERIAL_TO_PC. In motherboard mode, UART_PORT = Serial1
@@ -65,7 +70,8 @@ void setup() {
 	LoRa.setSignalBandwidth(LORA_BW);
 	LoRa.setCodingRate4(LORA_CR);
 	LoRa.setPreambleLength(LORA_PREAMBLE_LEN);
-
+	LoRa.setSyncWord(0x12);
+	
 	#if (LORA_CRC)
 	LoRa.enableCrc(); // not necessary to work with miaou, even if miaou enbale it...:-|
 	#else
@@ -103,12 +109,12 @@ void loop() {
 		UartCapsule.decode(UART_PORT.read());
   	}
 
-	// The visual clue is reset to the "config color".
-	if ((millis() - lastPacketReceived) > LED_COLOR_TIME) {
-		led.fill(colors[INITIAL_LED_COLOR]);
-		led.show();
-	}
-
+	#if DEBUG
+		if ((millis() - testtime) > 10000) {
+			sendTestPacket();
+			testtime = millis();		
+		}
+	#endif
 	// sleep(1);
 	// av_downlink_t p;
 	// p.packet_nbr = 42;
@@ -133,6 +139,15 @@ void loop() {
 
 		currentError = 0;
 	}
+}
+
+// Generic packet sending function
+void sendTestPacket() {
+  uint8_t packetData[9] = {0x1,0x2,0x49,0x1,0x2,0x3,0x4,0x5,0x6};
+
+  LoRa.beginPacket();
+  LoRa.write(packetData, sizeof(packetData));
+  LoRa.endPacket();
 }
 
 
