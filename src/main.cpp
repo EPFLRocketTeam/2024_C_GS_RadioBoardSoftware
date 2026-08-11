@@ -57,6 +57,9 @@ void setup() {
 	led.fill(colors[INITIAL_LED_COLOR]);
 	led.show();
 
+	pinMode(ETHERNET_RW_PIN, OUTPUT); 
+	digitalWrite(ETHERNET_RW_PIN, RW_CTRL); // false for receiver mode, true for sender mode
+
 	// LoRa setup
 	SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
 	LoRa.setPins(LORA_CS, LORA_RST, LORA_INT0);
@@ -154,7 +157,7 @@ void sendTestPacket() {
 // Handler for raw LoRa Rx data
 void handlePacketLoRa(int packetSize) {
 
-	if(packetSize != LoRaCapsule.getCodedLen(av_downlink_size))
+	if(packetSize != LoRaCapsule.getCodedLen(av_downlink_size) | LoRaCapsule.getCodedLen(gse_downlink_size))
 		currentError |= ERROR_RX_NOT_A_DOWNLINK_PACKET;
 
 	if(LoRaRxBuffer.availableForWrite() < 0)

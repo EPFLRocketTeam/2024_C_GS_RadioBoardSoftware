@@ -28,6 +28,8 @@
 
 #define NEOPIXEL_PIN            18
 
+#define ETHERNET_RW_PIN			3
+
 // Board is used to emit from ground control to the rocket and GSE
 #ifdef UPLINK
 	#define LORA_FREQ         UPLINK_FREQUENCY
@@ -45,6 +47,7 @@
 	#define INTERNAL_CAPSULE_ID GSC_INTERNAL_UPLINK
 	#define INTERNAL_ERR_CAPSULE_ID GSC_INTERNAL_ERR_UPLINK
 
+	#define RW_CTRL	false
 // Board is used to receive data from the rocket
 #elif AV_DOWNLINK
 	#define LORA_FREQ         AV_DOWNLINK_FREQUENCY
@@ -62,6 +65,7 @@
 	#define INTERNAL_CAPSULE_ID GSC_INTERNAL_VEHICLE_DOWNLINK
 	#define INTERNAL_ERR_CAPSULE_ID GSC_INTERNAL_ERR_VEHICLE_DOWNLINK
 
+	#define RW_CTRL	true
 	// Board is used to receive data from the GSE
 #elif GSE_DOWNLINK
 	#define LORA_FREQ         GSE_DOWNLINK_FREQUENCY
@@ -79,6 +83,7 @@
 	#define INTERNAL_CAPSULE_ID GSC_INTERNAL_GSE_DOWNLINK
 	#define INTERNAL_ERR_CAPSULE_ID GSC_INTERNAL_ERR_GSE_DOWNLINK
 
+	#define RW_CTRL	true
 #elif RF_PROTOCOL_ICARUS
 	#define LORA_INVERSE_IQ   GSE_DOWNLINK_INVERSE_IQ //GSE_DOWNLINK_INVERSE_IQ
 #endif
