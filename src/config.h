@@ -1,6 +1,6 @@
-#define DEBUG false
+#define DEBUG true
 
-#define MODE_STANDALONE false
+#define MODE_STANDALONE true
 #define SEND_TO_DB false
 
 // In standalone mode, the board will always send data to the PC
@@ -25,7 +25,7 @@
 #define LORA_CS                 41
 #define LORA_INT0               21
 #define LORA_INT5               39
-#define LORA_RST                -1  
+#define LORA_RST                40  
 
 #define NEOPIXEL_PIN            18
 
@@ -73,6 +73,8 @@
 	#define LORA_PREAMBLE_LEN GSE_DOWNLINK_PREAMBLE_LEN
 	#define LORA_SYNC_WORD    GSE_DOWNLINK_SYNC_WORD
 	#define LORA_CRC          GSE_DOWNLINK_CRC
+#endif
+
 #ifdef RF_PROTOCOL_ICARUS
 	#define LORA_INVERSE_IQ   GSE_DOWNLINK_INVERSE_IQ //GSE_DOWNLINK_INVERSE_IQ
 #else

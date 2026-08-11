@@ -6,6 +6,7 @@
 #include <SPI.h>
 
 #include "ERT_RF_Protocol_Interface/Protocol.h"
+#include "ERT_RF_Protocol_Interface/PacketDefinition_Firehorn2.h"
 #include "config.h"
 
 #define LED_COLOR_TIME 100 // Color of the led will be changed for x ms each time a packet is received
@@ -62,9 +63,10 @@ void setup() {
 	// Set LoRa parameters
 	LoRa.setTxPower(LORA_POWER);
 	LoRa.setSpreadingFactor(LORA_SF);
-	LoRa.setSignalBandwidth(LORA_BW);
+	LoRa.setSignalBandwidth(125E3);
 	LoRa.setCodingRate4(LORA_CR);
 	LoRa.setPreambleLength(LORA_PREAMBLE_LEN);
+	LoRa.setSyncWord(0x34);
 
 	#if (LORA_CRC)
 	LoRa.enableCrc(); // not necessary to work with miaou, even if miaou enbale it...:-|
@@ -74,11 +76,11 @@ void setup() {
 
 
 	// ! \\ Ne fonctionne que en disableInvertIQ
-	#if (LORA_INVERSE_IQ)	
-		LoRa.enableInvertIQ();
-	#else
-		LoRa.disableInvertIQ();
-	#endif
+	// #if (LORA_INVERSE_IQ)	
+	// 	LoRa.enableInvertIQ();
+	// #else
+	LoRa.disableInvertIQ();
+	// #endif
 	
 
 	LoRa.onReceive(handlePacketLoRa);
@@ -88,6 +90,7 @@ void setup() {
 	SERIAL_TO_PC.println("Startup Finished");
 }
 
+static int cmd_val = 1;
 void loop() {
 
 
@@ -109,16 +112,18 @@ void loop() {
 		led.show();
 	}
 
-	// sleep(1);
+	sleep(1);
 	// av_downlink_t p;
 	// p.packet_nbr = 42;
-	// uint8_t* packetToSend = LoRaCapsule.encode(CAPSULE_ID::AV_TELEMETRY, (uint8_t *)&p, av_downlink_size);
-	// LoRa.beginPacket();
-	// LoRa.write(packetToSend, LoRaCapsule.getCodedLen(av_downlink_size));
-	// LoRa.endPacket();
-	// UART_PORT.write(packetToSend, LoRaCapsule.getCodedLen(av_downlink_size));
-	// delete[] packetToSend;
-	// UART_PORT.println("Here we send");
+	av_uplink_t p = {AV_VALVE_MAIN_LOX, cmd_val};
+	cmd_val = !cmd_val;
+	uint8_t* packetToSend = LoRaCapsule.encode(CAPSULE_ID::GSC_CMD, (uint8_t *)&p, av_uplink_size);
+	LoRa.beginPacket();
+	LoRa.write(packetToSend, LoRaCapsule.getCodedLen(av_uplink_size));
+	LoRa.endPacket();
+	UART_PORT.write(packetToSend, LoRaCapsule.getCodedLen(av_uplink_size));
+	delete[] packetToSend;
+	UART_PORT.println("Here we send");
 
 
 	if(currentError) {
