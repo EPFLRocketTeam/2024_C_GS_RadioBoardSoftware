@@ -73,7 +73,7 @@ void setup() {
 	LoRa.setSignalBandwidth(LORA_BW);
 	LoRa.setCodingRate4(LORA_CR);
 	LoRa.setPreambleLength(LORA_PREAMBLE_LEN);
-	LoRa.setSyncWord(0x12);
+	LoRa.setSyncWord(0x34);
 	
 	#if (LORA_CRC)
 	LoRa.enableCrc(); // not necessary to work with miaou, even if miaou enbale it...:-|
@@ -118,15 +118,7 @@ void loop() {
 			testtime = millis();		
 		}
 	#endif
-	// sleep(1);
-	// av_downlink_t p;
-	// p.packet_nbr = 42;
-	// uint8_t* packetToSend = LoRaCapsule.encode(CAPSULE_ID::AV_TELEMETRY, (uint8_t *)&p, av_downlink_size);
-	// LoRa.beginPacket();
-	// LoRa.write(packetToSend, LoRaCapsule.getCodedLen(av_downlink_size));
-	// LoRa.endPacket();
-	// UART_PORT.write(packetToSend, LoRaCapsule.getCodedLen(av_downlink_size));
-	// delete[] packetToSend;
+
 	// UART_PORT.println("Here we send");
 
 
