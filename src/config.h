@@ -1,5 +1,5 @@
 #define DEBUG false
-#define MODE_STANDALONE false
+#define MODE_STANDALONE true
 #define SEND_TO_DB false
 
 // In standalone mode, the board will always send data to the PC

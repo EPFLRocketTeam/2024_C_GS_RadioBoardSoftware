@@ -57,8 +57,8 @@ void setup() {
 	led.fill(colors[INITIAL_LED_COLOR]);
 	led.show();
 
-	pinMode(ETHERNET_RW_PIN, OUTPUT); 
-	digitalWrite(ETHERNET_RW_PIN, RW_CTRL); // false for receiver mode, true for sender mode
+	// pinMode(ETHERNET_RW_PIN, OUTPUT); 
+	// digitalWrite(ETHERNET_RW_PIN, RW_CTRL); // false for receiver mode, true for sender mode
 
 	// LoRa setup
 	SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
@@ -156,8 +156,8 @@ void handlePacketLoRa(int packetSize) {
 		currentError |= ERROR_RX_BUFFER_OVERFLOW;
 
 	// Debug message
-	SERIAL_TO_PC.println("Packet received");
-	SERIAL_TO_PC.println(packetSize);
+	// SERIAL_TO_PC.println("Packet received");
+	// SERIAL_TO_PC.println(packetSize);
 
 	// Incoming data is stored in the LoRaRxBuffer for decoding by Capsule
 	for (int i = 0; i < packetSize; i++) {
@@ -175,9 +175,22 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	
 	// The radio boards do not do any processing besides LoRa/Capsule encoding/decoding.
 	// The packet thusly is routed through the UART_PORT.
-	uint8_t* packetToSend = UartCapsule.encode(packetId,dataIn,len);
-	UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
-	delete[] packetToSend;
+	av_downlink_t compressed = *(av_downlink_t*)dataIn;
+	av_downlink_unpacked_t uncompressed = decode_downlink(compressed);
+
+	printf("COPV P TOP: %f\n",uncompressed.HPE_pressure);
+	printf("COPV P BOT: %f\n",uncompressed.HPO_pressure);
+	printf("ETH P: %f\n",uncompressed.fuel_pressure);
+	printf("LOX P: %f\n",uncompressed.LOX_pressure);
+	printf("FSM State: %f\n",uncompressed.av_state);
+	printf("GPS LON: %f\n",uncompressed.gnss_lon);
+	printf("GPS LAT: %f\n",uncompressed.gnss_lat);
+	printf("GPS ALT: %f\n",uncompressed.gnss_alt);
+	printf("PKT NUM: %f\n",uncompressed.packet_nbr);
+
+	// uint8_t* packetToSend = UartCapsule.encode(packetId,(uint8_t*)data_stream,message_len);
+	// UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
+	// delete[] packetToSend;
 
 	// Send a feedback packet for the GSC
 	gsc_internal_t internal_packet{
