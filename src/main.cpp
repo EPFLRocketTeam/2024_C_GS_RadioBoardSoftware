@@ -148,29 +148,30 @@ void handlePacketLoRa(int packetSize) {
 }
 
 void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
-	// Nice visual clue to show that the board has received a new packet.
 	lastPacketReceived = millis();
-	uint32_t ledColor = colors[millis()%5];
-	led.fill(ledColor);
+	led.fill(colors[millis() % 5]);   // vérifiez que colors[] a bien 5 éléments
 	led.show();
-	
-	LoRa.setFrequency(SEND_FREQ);
+
+	// --- Émission sur la fréquence d'envoi ---
+	if (!LoRa.begin(SEND_FREQ)) return;
 	LoRa.setTxPower(SEND_POWER);
 	LoRa.setSpreadingFactor(SEND_SF);
 	LoRa.setSignalBandwidth(SEND_BW);
 	LoRa.setCodingRate4(SEND_CR);
 	LoRa.setPreambleLength(SEND_PREAMBLE_LEN);
 
-	uint8_t* new_pack;
-	new_pack = LoRaCapsule.encode(packetId,dataIn,len);
-	LoRa.write(new_pack,LoRaCapsule.getCodedLen(len));
+	uint8_t *new_pack = LoRaCapsule.encode(packetId, dataIn, len);
+	LoRa.beginPacket();
+	LoRa.write(new_pack, LoRaCapsule.getCodedLen(len));
+	LoRa.endPacket();                 // bloquant : attend la fin du TX
+	delete[] new_pack;
 
-	LoRa.setFrequency(RELAY_FREQ);
+	// --- Retour sur la fréquence de relais / réception ---
+	LoRa.begin(RELAY_FREQ);
 	LoRa.setTxPower(RELAY_POWER);
 	LoRa.setSpreadingFactor(RELAY_SF);
 	LoRa.setSignalBandwidth(RELAY_BW);
 	LoRa.setCodingRate4(RELAY_CR);
 	LoRa.setPreambleLength(RELAY_PREAMBLE_LEN);
-
-	return;
+	LoRa.receive();                   // si vous utilisez onReceive
 }
