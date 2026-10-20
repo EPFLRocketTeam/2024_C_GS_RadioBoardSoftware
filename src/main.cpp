@@ -29,12 +29,10 @@ uint32_t colors[] = {
 void sendPacket();
 void handlePacketLoRa(int packetSize);
 void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len);
-void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len);
 
 Adafruit_NeoPixel led(1, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800); // 1 led
 LoopbackStream LoRaRxBuffer(2048);
 CapsuleStatic LoRaCapsule(handleLoRaCapsule);
-CapsuleStatic UartCapsule(handleUartCapsule);
 
 void setup() {
 	// Debug channel setup
@@ -65,13 +63,13 @@ void setup() {
 	LoRa.setPins(LORA_CS, LORA_RST, LORA_INT0);
 	LoRa.setSPI(SPI);
 
-	if (!LoRa.begin(LORA_FREQ)) SERIAL_TO_PC.println("Starting LoRa failed!");
+	if (!LoRa.begin(867.5E6)) SERIAL_TO_PC.println("Starting LoRa failed!");
 
 	// Set LoRa parameters
 	LoRa.setTxPower(LORA_POWER);
-	LoRa.setSpreadingFactor(LORA_SF);
-	LoRa.setSignalBandwidth(LORA_BW);
-	LoRa.setCodingRate4(LORA_CR);
+	LoRa.setSpreadingFactor(8);
+	LoRa.setSignalBandwidth(125E3);
+	LoRa.setCodingRate4(7);
 	LoRa.setPreambleLength(LORA_PREAMBLE_LEN);
 	LoRa.setSyncWord(0x34);
 	
@@ -106,11 +104,6 @@ void loop() {
 		LoRaCapsule.decode(LoRaRxBuffer.read());
   	}
 
-	// Incoming data from the UART_PORT is processed.
-	// In standalone mode, this data is sent by the computer. In motherboard mode, this data has been routed by the motherboard.
-	while (UART_PORT.available()) {
-		UartCapsule.decode(UART_PORT.read());
-  	}
 
 	#if DEBUG
 		if ((millis() - testtime) > 10000) {
@@ -122,18 +115,6 @@ void loop() {
 	// UART_PORT.println("Here we send");
 
 
-	if(currentError) {
-		gsc_internal_error_t errorPacket{
-			.timestamp = millis(),
-			.error = currentError,
-		};
-
-		uint8_t* errorToSend = UartCapsule.encode(INTERNAL_ERR_CAPSULE_ID, (uint8_t*) &errorPacket, gsc_internal_error_size);
-		UART_PORT.write(errorToSend, UartCapsule.getCodedLen(gsc_internal_error_size));
-		delete[] errorToSend;
-
-		currentError = 0;
-	}
 }
 
 // Generic packet sending function
@@ -169,56 +150,25 @@ void handlePacketLoRa(int packetSize) {
 void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// Nice visual clue to show that the board has received a new packet.
 	lastPacketReceived = millis();
-	uint32_t ledColor = colors[INITIAL_LED_COLOR+1];
+	uint32_t ledColor = colors[millis()%5];
 	led.fill(ledColor);
 	led.show();
 	
-	// The radio boards do not do any processing besides LoRa/Capsule encoding/decoding.
-	// The packet thusly is routed through the UART_PORT.
-	av_downlink_t compressed = *(av_downlink_t*)dataIn;
-	av_downlink_unpacked_t uncompressed = decode_downlink(compressed);
+	LoRa.setFrequency(MISHUNG_FREQ);
+	LoRa.setTxPower(MISHUNG_POWER);
+	LoRa.setSpreadingFactor(MISHUNG_SF);
+	LoRa.setSignalBandwidth(MISHUNG_BW);
+	LoRa.setCodingRate4(MISHUNG_CR);
+	LoRa.setPreambleLength(MISHUNG_PREAMBLE_LEN);
 
-	printf("COPV P TOP: %f\n",uncompressed.HPE_pressure);
-	printf("COPV P BOT: %f\n",uncompressed.HPO_pressure);
-	printf("ETH P: %f\n",uncompressed.fuel_pressure);
-	printf("LOX P: %f\n",uncompressed.LOX_pressure);
-	printf("FSM State: %f\n",uncompressed.av_state);
-	printf("GPS LON: %f\n",uncompressed.gnss_lon);
-	printf("GPS LAT: %f\n",uncompressed.gnss_lat);
-	printf("GPS ALT: %f\n",uncompressed.gnss_alt);
-	printf("PKT NUM: %f\n",uncompressed.packet_nbr);
+	LoRa.write(dataIn,LoRaCapsule.getCodedLen(len));
 
-	// uint8_t* packetToSend = UartCapsule.encode(packetId,(uint8_t*)data_stream,message_len);
-	// UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
-	// delete[] packetToSend;
+	LoRa.setFrequency(RELAY_FREQ);
+	LoRa.setTxPower(RELAY_POWER);
+	LoRa.setSpreadingFactor(RELAY_SF);
+	LoRa.setSignalBandwidth(RELAY_BW);
+	LoRa.setCodingRate4(RELAY_CR);
+	LoRa.setPreambleLength(RELAY_PREAMBLE_LEN);
 
-	// Send a feedback packet for the GSC
-	gsc_internal_t internal_packet{
-		.timestamp = millis(),
-		.rssi = LoRa.packetRssi(),
-		.snr = LoRa.packetSnr(),
-	};
-		
-	uint8_t* internalToSend = UartCapsule.encode(INTERNAL_CAPSULE_ID, (uint8_t*) &internal_packet, gsc_internal_size);
-	UART_PORT.write(internalToSend, UartCapsule.getCodedLen(gsc_internal_size));
-	delete[] internalToSend;
 	return;
-}
-
-void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
-	lastPacketReceived = millis();
-	uint32_t ledColor = colors[INITIAL_LED_COLOR+1];
-	led.fill(ledColor);
-	led.show();
-
-	uint8_t* packetToSend = LoRaCapsule.encode(packetId,dataIn,len);
-	if(LoRa.beginPacket()) {
-		LoRa.write(packetToSend,LoRaCapsule.getCodedLen(len));
-		LoRa.endPacket();
-	} else {
-		currentError |= ERROR_TX_FAILURE;
-	}
-
-	LoRa.receive();
-	delete[] packetToSend;
 }
