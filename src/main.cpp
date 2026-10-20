@@ -63,15 +63,15 @@ void setup() {
 	LoRa.setPins(LORA_CS, LORA_RST, LORA_INT0);
 	LoRa.setSPI(SPI);
 
-	if (!LoRa.begin(867.5E6)) SERIAL_TO_PC.println("Starting LoRa failed!");
+	if (!LoRa.begin(RELAY_FREQ)) SERIAL_TO_PC.println("Starting LoRa failed!");
 
 	// Set LoRa parameters
-	LoRa.setTxPower(LORA_POWER);
-	LoRa.setSpreadingFactor(8);
-	LoRa.setSignalBandwidth(125E3);
-	LoRa.setCodingRate4(7);
-	LoRa.setPreambleLength(LORA_PREAMBLE_LEN);
-	LoRa.setSyncWord(0x34);
+	LoRa.setTxPower(RELAY_POWER);
+	LoRa.setSpreadingFactor(RELAY_SF);
+	LoRa.setSignalBandwidth(RELAY_BW);
+	LoRa.setCodingRate4(RELAY_CR);
+	LoRa.setPreambleLength(RELAY_PREAMBLE_LEN);
+	LoRa.setSyncWord(RELAY_SYNC_WORD);
 	
 	#if (LORA_CRC)
 	LoRa.enableCrc(); // not necessary to work with miaou, even if miaou enbale it...:-|
@@ -154,12 +154,12 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	led.fill(ledColor);
 	led.show();
 	
-	LoRa.setFrequency(MISHUNG_FREQ);
-	LoRa.setTxPower(MISHUNG_POWER);
-	LoRa.setSpreadingFactor(MISHUNG_SF);
-	LoRa.setSignalBandwidth(MISHUNG_BW);
-	LoRa.setCodingRate4(MISHUNG_CR);
-	LoRa.setPreambleLength(MISHUNG_PREAMBLE_LEN);
+	LoRa.setFrequency(SEND_FREQ);
+	LoRa.setTxPower(SEND_POWER);
+	LoRa.setSpreadingFactor(SEND_SF);
+	LoRa.setSignalBandwidth(SEND_BW);
+	LoRa.setCodingRate4(SEND_CR);
+	LoRa.setPreambleLength(SEND_PREAMBLE_LEN);
 
 	LoRa.write(dataIn,LoRaCapsule.getCodedLen(len));
 
