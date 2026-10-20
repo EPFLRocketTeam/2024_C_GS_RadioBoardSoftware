@@ -211,7 +211,7 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 			LoRa.setSignalBandwidth(LORA_BW);
 			LoRa.setCodingRate4(LORA_CR);
 		} else {
-			LoRa.setFrequency(865.34E6);
+			LoRa.setFrequency(867.5E6);
 			LoRa.setTxPower(DEFAULT_TX_POWER);
 			LoRa.setSpreadingFactor(DEFAULT_SF);
 			LoRa.setSignalBandwidth(DEFAULT_BW);
