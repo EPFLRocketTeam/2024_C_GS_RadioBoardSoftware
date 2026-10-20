@@ -11,6 +11,7 @@
 #define LED_COLOR_TIME 100 // Color of the led will be changed for x ms each time a packet is received
 static unsigned long lastPacketReceived = 0;
 static uint8_t currentError = 0;
+bool relay = false;
 
 #if DEBUG
 static unsigned long testtime = 0;
@@ -197,6 +198,32 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	uint32_t ledColor = colors[INITIAL_LED_COLOR+1];
 	led.fill(ledColor);
 	led.show();
+	av_uplink_t packet = *(av_uplink_t*)dataIn;
+	if (packet.order_id > GSE_CMD_TOGGLE_ALL_GQD) {
+		relay = !relay;
+		return;
+	}	
+	if (relay) {
+		if (packet.order_id >= GSE_CMD_IDLE) {
+			LoRa.setFrequency(LORA_FREQ);
+			LoRa.setTxPower(LORA_POWER);
+			LoRa.setSpreadingFactor(LORA_SF);
+			LoRa.setSignalBandwidth(LORA_BW);
+			LoRa.setCodingRate4(LORA_CR);
+		} else {
+			LoRa.setFrequency(865.34E6);
+			LoRa.setTxPower(DEFAULT_TX_POWER);
+			LoRa.setSpreadingFactor(DEFAULT_SF);
+			LoRa.setSignalBandwidth(DEFAULT_BW);
+			LoRa.setCodingRate4(DEFAULT_CR);
+		}
+	} else {
+		LoRa.setFrequency(LORA_FREQ);
+		LoRa.setTxPower(LORA_POWER);
+		LoRa.setSpreadingFactor(LORA_SF);
+		LoRa.setSignalBandwidth(LORA_BW);
+		LoRa.setCodingRate4(LORA_CR);
+	}
 
 	uint8_t* packetToSend = LoRaCapsule.encode(packetId,dataIn,len);
 	if(LoRa.beginPacket()) {
