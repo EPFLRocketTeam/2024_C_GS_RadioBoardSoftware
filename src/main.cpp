@@ -195,15 +195,16 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 
 void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	lastPacketReceived = millis();
-	uint32_t ledColor = colors[INITIAL_LED_COLOR+1];
-	led.fill(ledColor);
-	led.show();
 	av_uplink_t packet = *(av_uplink_t*)dataIn;
 	if (packet.order_id > GSE_CMD_TOGGLE_ALL_GQD) {
 		relay = !relay;
 		return;
 	}	
 	if (relay) {
+		uint32_t ledColor = colors[5];
+		led.fill(ledColor);
+		led.show();
+
 		if (packet.order_id >= GSE_CMD_IDLE) {
 			LoRa.setFrequency(LORA_FREQ);
 			LoRa.setTxPower(LORA_POWER);
@@ -218,6 +219,10 @@ void handleUartCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 			LoRa.setCodingRate4(DEFAULT_CR);
 		}
 	} else {
+		uint32_t ledColor = colors[INITIAL_LED_COLOR+1];
+		led.fill(ledColor);
+		led.show();
+
 		LoRa.setFrequency(LORA_FREQ);
 		LoRa.setTxPower(LORA_POWER);
 		LoRa.setSpreadingFactor(LORA_SF);
