@@ -161,7 +161,9 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	LoRa.setCodingRate4(SEND_CR);
 	LoRa.setPreambleLength(SEND_PREAMBLE_LEN);
 
-	LoRa.write(dataIn,LoRaCapsule.getCodedLen(len));
+	uint8_t* new_pack;
+	new_pack = LoRaCapsule.encode(packetId,dataIn,len);
+	LoRa.write(new_pack,LoRaCapsule.getCodedLen(len));
 
 	LoRa.setFrequency(RELAY_FREQ);
 	LoRa.setTxPower(RELAY_POWER);
