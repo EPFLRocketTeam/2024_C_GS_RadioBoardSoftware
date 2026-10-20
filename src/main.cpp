@@ -12,6 +12,9 @@
 static unsigned long lastPacketReceived = 0;
 static uint8_t currentError = 0;
 
+EspUsbHost usb;
+EspUsbHostCdcSerial to_stm(usb);
+
 #if DEBUG
 static unsigned long testtime = 0;
 #endif
@@ -94,9 +97,9 @@ void setup() {
 	LoRa.onReceive(handlePacketLoRa);
 	LoRa.receive();
 	LoRa.receive();
- 
-	EspUsbHost usb;
-	EspUsbHostCdcSerial to_stm(usb);
+
+	to_stm.begin(115200);   // attache le port CDC
+	usb.begin();            // démarre la tâche FreeRTOS de l'hôte USB
 
 	SERIAL_TO_PC.println("Startup Finished");
 }
@@ -204,80 +207,90 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	// todo
 	// SERIAL_TO_PC.print("vent_copv");
 
-	switch (order_id) {
-	case AV_CMD_CALIBRATE:
+	// static bool wasUp = false;
+	// bool up = to_stm.connected();
+
+	// if (up && !wasUp) {          // (re)connexion : réactive DTR/RTS
+	// 	to_stm.setDtr(true);
+	// 	to_stm.setRts(true);
+	// }
+	// wasUp = up;
+
+	switch (order_id)
+	{
+	case AV_CMD_CALIBRATE: //////PROBLEME REVOIR SVP THEO svp//////////////////////////////////////////////////////////////////////////////////////////
 		//SERIAL_TO_PC.println("calibrate");
-		stm.printf("%s\r\n", "calibrate");
+		to_stm.printf("calibrate\r\n");
 		break;
 	case AV_CMD_RECOVER:
 		//SERIAL_TO_PC.println("recover");
-		stm.printf("%s\r\n", "recover");
+		to_stm.printf("recover\r\n");
 		break;
 	case AV_CMD_ARM:
 		//SERIAL_TO_PC.println("arm");
-		stm.printf("%s\r\n", "");
+		to_stm.printf("arm\r\n");
 		break;
 	case AV_CMD_PRESSURIZE:
 		//SERIAL_TO_PC.println("pressurize on");
-		stm.printf("%s\r\n", "");
+		to_stm.printf("pressurize on\r\n");
 		break;
 	case AV_CMD_LAUNCH:
 		//SERIAL_TO_PC.println("launch");
-		stm.printf("%s\r\n", "");
+		to_stm.printf("launch\r\n");
 		break;
 	case AV_CMD_ABORT:
 		//SERIAL_TO_PC.println("abort");
-		stm.printf("%s\r\n", "");
+		to_stm.printf("abort\r\n");
 		break;
-	case AV_CMD_DPR_LOX:
+	case AV_CMD_DPR_LOX: //////PROBLEME REVOIR SVP THEO svp////
 		//SERIAL_TO_PC.print("ball lox ");
 		//SERIAL_TO_PC.println(order_value);
-		stm.printf("%s\r\n", "ball lox ");
+		to_stm.printf("ball lox %d\r\n", order_value);
 		break ;
-	case AV_CMD_DPR_FUEL:
+	case AV_CMD_DPR_FUEL: //////PROBLEME REVOIR SVP THEO svp////
 		//SERIAL_TO_PC.print("ball fuel ");
 		//SERIAL_TO_PC.println(order_value);
-		stm.printf("%s\r\n", "ball fuel ");
+		to_stm.printf("ball fuel %d\r\n", order_value);
 		break ;
 	case AV_CMD_MAIN_LOX:
-		if(order_value==0){ stm.printf("%s\r\n", "main lox off"); } //SERIAL_TO_PC.println("main lox off"); }
-		if(order_value==1){ stm.printf("%s\r\n", "main lox on"); } //SERIAL_TO_PC.println("main lox on"); }
+		if(order_value==0){ to_stm.printf("main lox off\r\n"); } //SERIAL_TO_PC.println("main lox off"); }
+		if(order_value==1){ to_stm.printf("main lox on\r\n"); } //SERIAL_TO_PC.println("main lox on"); }
 		break;
 	case AV_CMD_MAIN_FUEL:
-		if(order_value==0){ stm.printf("%s\r\n", "main fuel off"); } //SERIAL_TO_PC.println("main fuel off"); }
-		if(order_value==1){ stm.printf("%s\r\n", "main fuel on"); } //SERIAL_TO_PC.println("main fuel on"); }
+		if(order_value==0){ to_stm.printf("main fuel off\r\n"); } //SERIAL_TO_PC.println("main fuel off"); }
+		if(order_value==1){ to_stm.printf("main fuel on\r\n"); } //SERIAL_TO_PC.println("main fuel on"); }
 		break;
 	case AV_CMD_VENT_LOX:
-		if(order_value==0){ stm.printf("%s\r\n", "vent lox off"); } //SERIAL_TO_PC.println("vent lox off"); }
-		if(order_value==1){ stm.printf("%s\r\n", "vent lox on"); } //SERIAL_TO_PC.println("vent lox on"); }
+		if(order_value==0){ to_stm.printf("vent lox off\r\n"); } //SERIAL_TO_PC.println("vent lox off"); }
+		if(order_value==1){ to_stm.printf("vent lox on\r\n"); } //SERIAL_TO_PC.println("vent lox on"); }
 		break;
 	case AV_CMD_VENT_FUEL:
-		if(order_value==0){ stm.printf("%s\r\n", "vent fuel off"); } //SERIAL_TO_PC.println("vent fuel off"); }
-		if(order_value==1){ stm.printf("%s\r\n", "vent fuel on"); } //SERIAL_TO_PC.println("vent fuel on"); }
+		if(order_value==0){ to_stm.printf("vent fuel off\r\n"); } //SERIAL_TO_PC.println("vent fuel off"); }
+		if(order_value==1){ to_stm.printf("vent fuel on\r\n"); } //SERIAL_TO_PC.println("vent fuel on"); }
 		break;
 	case AV_CMD_SDPR_LOX:
-		if(order_value==0){ stm.printf("%s\r\n", "safety lox off"); } //SERIAL_TO_PC.println("safety lox off"); }
-		if(order_value==1){ stm.printf("%s\r\n", "safety lox on"); } //SERIAL_TO_PC.println("safety lox on"); }
+		if(order_value==0){ to_stm.printf("safety lox off\r\n"); } //SERIAL_TO_PC.println("safety lox off"); }
+		if(order_value==1){ to_stm.printf("safety lox on\r\n"); } //SERIAL_TO_PC.println("safety lox on"); }
 		break;
 	case AV_CMD_SDPR_FUEL:
-		if(order_value==0){ stm.printf("%s\r\n", "safety fuel off"); } //SERIAL_TO_PC.println("safety fuel off"); }
-		if(order_value==1){ stm.printf("%s\r\n", "safety fuel on"); } //SERIAL_TO_PC.println("safety fuel on"); }
+		if(order_value==0){ to_stm.printf("safety fuel off\r\n"); } //SERIAL_TO_PC.println("safety fuel off"); }
+		if(order_value==1){ to_stm.printf("safety fuel on\r\n"); } //SERIAL_TO_PC.println("safety fuel on"); }
 		break;
 	case AV_CMD_CAMERA_START:
 		//SERIAL_TO_PC.println("cameras start");
-		stm.printf("%s\r\n", "cameras start");
+		to_stm.printf("cameras start\r\n");
 		break;
 	case AV_CMD_CAMERA_STOP:
 		//SERIAL_TO_PC.println("cameras stop");
-		stm.printf("%s\r\n", "cameras stop");
+		to_stm.printf("cameras stop\r\n");
 		break;
 	case AV_CMD_CAMERA_ABORT:
 		//SERIAL_TO_PC.println("cameras abort");
-		stm.printf("%s\r\n", "cameras abort");
+		to_stm.printf("cameras abort\r\n");
 		break;
 	case AV_CMD_CAMERA_RECOVER:
 		//SERIAL_TO_PC.println("cameras recover");
-		stm.printf("%s\r\n", "cameras recover");
+		to_stm.printf("cameras recover\r\n");
 		break;
 	}
 	
