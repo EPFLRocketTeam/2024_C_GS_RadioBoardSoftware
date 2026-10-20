@@ -4,9 +4,9 @@
 #include <LoRa.h>
 #include <LoopbackStream.h>
 #include <SPI.h>
-
 #include "ERT_RF_Protocol_Interface/Protocol.h"
 #include "config.h"
+#include "EspUsbHost.h"
 
 #define LED_COLOR_TIME 100 // Color of the led will be changed for x ms each time a packet is received
 static unsigned long lastPacketReceived = 0;
@@ -36,6 +36,7 @@ LoopbackStream LoRaRxBuffer(2048);
 CapsuleStatic LoRaCapsule(handleLoRaCapsule);
 CapsuleStatic UartCapsule(handleUartCapsule);
 
+
 void setup() {
 	// Debug channel setup
 	SERIAL_TO_PC.begin(SERIAL_TO_PC_BAUD);
@@ -58,7 +59,7 @@ void setup() {
 	led.show();
 
 	pinMode(ETHERNET_RW_PIN, OUTPUT); 
-	digitalWrite(ETHERNET_RW_PIN, RW_CTRL); // false for receiver mode, true for sender mode
+	digitalWrite(ETHERNET_RW_PIN, !RW_CTRL); // false for receiver mode, true for sender mode [here's mischung: !]
 
 	// LoRa setup
 	SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
@@ -94,10 +95,14 @@ void setup() {
 	LoRa.receive();
 	LoRa.receive();
  
+	EspUsbHost usb;
+	EspUsbHostCdcSerial to_stm(usb);
+
 	SERIAL_TO_PC.println("Startup Finished");
 }
 
 void loop() {
+
 
 
 	// Incoming data from the LoRa is processed.
@@ -156,8 +161,8 @@ void handlePacketLoRa(int packetSize) {
 		currentError |= ERROR_RX_BUFFER_OVERFLOW;
 
 	// Debug message
-	SERIAL_TO_PC.println("Packet received");
-	SERIAL_TO_PC.println(packetSize);
+	//SERIAL_TO_PC.println("Packet received");
+	//SERIAL_TO_PC.println(packetSize);
 
 	// Incoming data is stored in the LoRaRxBuffer for decoding by Capsule
 	for (int i = 0; i < packetSize; i++) {
@@ -175,20 +180,111 @@ void handleLoRaCapsule(uint8_t packetId, uint8_t *dataIn, uint32_t len) {
 	
 	// The radio boards do not do any processing besides LoRa/Capsule encoding/decoding.
 	// The packet thusly is routed through the UART_PORT.
-	uint8_t* packetToSend = UartCapsule.encode(packetId,dataIn,len);
-	UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
-	delete[] packetToSend;
+	// uint8_t* packetToSend = UartCapsule.encode(packetId,dataIn,len);
+	// UART_PORT.write(packetToSend,UartCapsule.getCodedLen(len));
+	// delete[] packetToSend;
 
 	// Send a feedback packet for the GSC
-	gsc_internal_t internal_packet{
-		.timestamp = millis(),
-		.rssi = LoRa.packetRssi(),
-		.snr = LoRa.packetSnr(),
-	};
+	// gsc_internal_t internal_packet{
+	// 	.timestamp = millis(),
+	// 	.rssi = LoRa.packetRssi(),
+	// 	.snr = LoRa.packetSnr(),
+	// };
+
+	uint8_t order_id = dataIn[0];
+	uint8_t  order_value = dataIn[1];
+
+
+	// SERIAL_TO_PC.println("");
+	// SERIAL_TO_PC.print("id = ");
+	// SERIAL_TO_PC.print(order_id);
+	// SERIAL_TO_PC.print(" | value = ");
+	// SERIAL_TO_PC.println(order_value);
+	
+	// todo
+	// SERIAL_TO_PC.print("vent_copv");
+
+	switch (order_id) {
+	case AV_CMD_CALIBRATE:
+		//SERIAL_TO_PC.println("calibrate");
+		stm.printf("%s\r\n", "calibrate");
+		break;
+	case AV_CMD_RECOVER:
+		//SERIAL_TO_PC.println("recover");
+		stm.printf("%s\r\n", "recover");
+		break;
+	case AV_CMD_ARM:
+		//SERIAL_TO_PC.println("arm");
+		stm.printf("%s\r\n", "");
+		break;
+	case AV_CMD_PRESSURIZE:
+		//SERIAL_TO_PC.println("pressurize on");
+		stm.printf("%s\r\n", "");
+		break;
+	case AV_CMD_LAUNCH:
+		//SERIAL_TO_PC.println("launch");
+		stm.printf("%s\r\n", "");
+		break;
+	case AV_CMD_ABORT:
+		//SERIAL_TO_PC.println("abort");
+		stm.printf("%s\r\n", "");
+		break;
+	case AV_CMD_DPR_LOX:
+		//SERIAL_TO_PC.print("ball lox ");
+		//SERIAL_TO_PC.println(order_value);
+		stm.printf("%s\r\n", "ball lox ");
+		break ;
+	case AV_CMD_DPR_FUEL:
+		//SERIAL_TO_PC.print("ball fuel ");
+		//SERIAL_TO_PC.println(order_value);
+		stm.printf("%s\r\n", "ball fuel ");
+		break ;
+	case AV_CMD_MAIN_LOX:
+		if(order_value==0){ stm.printf("%s\r\n", "main lox off"); } //SERIAL_TO_PC.println("main lox off"); }
+		if(order_value==1){ stm.printf("%s\r\n", "main lox on"); } //SERIAL_TO_PC.println("main lox on"); }
+		break;
+	case AV_CMD_MAIN_FUEL:
+		if(order_value==0){ stm.printf("%s\r\n", "main fuel off"); } //SERIAL_TO_PC.println("main fuel off"); }
+		if(order_value==1){ stm.printf("%s\r\n", "main fuel on"); } //SERIAL_TO_PC.println("main fuel on"); }
+		break;
+	case AV_CMD_VENT_LOX:
+		if(order_value==0){ stm.printf("%s\r\n", "vent lox off"); } //SERIAL_TO_PC.println("vent lox off"); }
+		if(order_value==1){ stm.printf("%s\r\n", "vent lox on"); } //SERIAL_TO_PC.println("vent lox on"); }
+		break;
+	case AV_CMD_VENT_FUEL:
+		if(order_value==0){ stm.printf("%s\r\n", "vent fuel off"); } //SERIAL_TO_PC.println("vent fuel off"); }
+		if(order_value==1){ stm.printf("%s\r\n", "vent fuel on"); } //SERIAL_TO_PC.println("vent fuel on"); }
+		break;
+	case AV_CMD_SDPR_LOX:
+		if(order_value==0){ stm.printf("%s\r\n", "safety lox off"); } //SERIAL_TO_PC.println("safety lox off"); }
+		if(order_value==1){ stm.printf("%s\r\n", "safety lox on"); } //SERIAL_TO_PC.println("safety lox on"); }
+		break;
+	case AV_CMD_SDPR_FUEL:
+		if(order_value==0){ stm.printf("%s\r\n", "safety fuel off"); } //SERIAL_TO_PC.println("safety fuel off"); }
+		if(order_value==1){ stm.printf("%s\r\n", "safety fuel on"); } //SERIAL_TO_PC.println("safety fuel on"); }
+		break;
+	case AV_CMD_CAMERA_START:
+		//SERIAL_TO_PC.println("cameras start");
+		stm.printf("%s\r\n", "cameras start");
+		break;
+	case AV_CMD_CAMERA_STOP:
+		//SERIAL_TO_PC.println("cameras stop");
+		stm.printf("%s\r\n", "cameras stop");
+		break;
+	case AV_CMD_CAMERA_ABORT:
+		//SERIAL_TO_PC.println("cameras abort");
+		stm.printf("%s\r\n", "cameras abort");
+		break;
+	case AV_CMD_CAMERA_RECOVER:
+		//SERIAL_TO_PC.println("cameras recover");
+		stm.printf("%s\r\n", "cameras recover");
+		break;
+	}
+	
 		
-	uint8_t* internalToSend = UartCapsule.encode(INTERNAL_CAPSULE_ID, (uint8_t*) &internal_packet, gsc_internal_size);
-	UART_PORT.write(internalToSend, UartCapsule.getCodedLen(gsc_internal_size));
-	delete[] internalToSend;
+	// uint8_t* internalToSend = UartCapsule.encode(INTERNAL_CAPSULE_ID, (uint8_t*) &internal_packet, gsc_internal_size);
+	// UART_PORT.write(internalToSend, UartCapsule.getCodedLen(gsc_internal_size));
+	// delete[] internalToSend;
 	return;
 }
 

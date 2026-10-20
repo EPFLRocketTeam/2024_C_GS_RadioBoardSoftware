@@ -13,7 +13,7 @@
 
 #define UART_BAUD   		115200
 
-#define SERIAL_TO_PC        USBSerial
+#define SERIAL_TO_PC        Serial
 #define SERIAL_TO_PC_BAUD   115200
 
 // PIN/GPIO Definition on Radio Module ERT
